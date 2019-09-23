@@ -1,0 +1,364 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>ChannelCodingFile</title><meta name="generator" content="MATLAB 9.0"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2017-05-04"><meta name="DC.source" content="ChannelCodingFile.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><pre class="codeinput">clc
+clear <span class="string">all</span>
+<span class="comment">% Read Highway Video</span>
+obj = VideoReader(<span class="string">'highway.avi'</span>);
+a= read(obj);
+frames=get(obj,<span class="string">'NumberOfFrames'</span>);
+
+<span class="comment">% extracting Frames</span>
+<span class="keyword">for</span> i=1:frames
+     I(i).cdata=a(:,:,:,i);
+<span class="keyword">end</span>
+
+s=size(I(1).cdata);
+mov(1:frames) =struct(<span class="string">'cdata'</span>, zeros(s(1),s(2), 3, <span class="string">'uint8'</span>),<span class="string">'colormap'</span>, []);
+<span class="comment">% Trellis Generate rate half</span>
+t = poly2trellis(7,[171 133]);
+
+<span class="comment">% Probability vector with 6 elements</span>
+probvector=[0.0001:0.03998:0.2];
+errorBitswithinc=zeros(1,length(probvector));
+throughput=zeros(1,length(probvector));
+
+<span class="comment">% puncturing matrix</span>
+punGeneral=[1 1 1 0 1 0 1 0 0 1 1 0 1 0 1 0;1 1 1 0 1 0 1 0 1 1 1 0 1 0 1 0;
+    1 1 1 0 1 1 1 0 1 1 1 0 1 1 1 0;1 1 1 1 1 1 1 0 1 1 1 1 1 1 1 0;1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1];
+
+<span class="keyword">for</span> idx = 1:length(probvector)
+
+       errornumber=0;
+       sentBits=0;
+
+<span class="keyword">for</span> Frame=1:frames
+<span class="comment">%Red Components of the Frame</span>
+R=I(Frame).cdata(:,:,1);
+<span class="comment">%Green Components of the Frame</span>
+G=I(Frame).cdata(:,:,2);
+<span class="comment">%Blue Components of the Frame</span>
+B=I(Frame).cdata(:,:,3);
+
+<span class="comment">% Reshaping Red Bits</span>
+[sz1,sz2]=size(R);
+redBits=reshape(R,1,sz1*sz2);
+<span class="comment">% Reshaping Green Bits</span>
+[sz1,sz2]=size(G);
+greenBits=reshape(G,1,sz1*sz2);
+<span class="comment">% Reshaping Blue Bits</span>
+[sz1,sz2]=size(B);
+blueBits=reshape(B,1,sz1*sz2);
+
+redBits=double(redBits);
+redBits=de2bi(redBits);
+redBits=reshape(redBits,1,[]);
+
+greenBits=double(greenBits);
+greenBits=de2bi(greenBits);
+greenBits=reshape(greenBits,1,[]);
+
+blueBits=double(blueBits);
+blueBits=de2bi(blueBits);
+blueBits=reshape(blueBits,1,[]);
+
+<span class="comment">% Concatinating bit final stream</span>
+totalBits=horzcat(redBits,greenBits,blueBits);
+
+length(totalBits);
+length(totalBits)/1024;
+<span class="comment">%we knownow that the total number of pkts is 594 , use this number again</span>
+
+<span class="comment">% Packets to be encoded</span>
+pkts=reshape(totalBits,594,1024);
+<span class="comment">% matrix to recieve decoded data</span>
+decoded=zeros(594,1024);
+
+
+<span class="comment">% 2 loops to apply puncturing if the recieved packet is not equal to the</span>
+<span class="comment">% data before encoding we increment the puncturing rate</span>
+<span class="keyword">for</span> i=1:594
+    j=1;
+   <span class="keyword">while</span> j&lt;=5
+        code = convenc(pkts(i,:),t,punGeneral(j,:));
+        p = probvector(idx);
+        recieved = bsc(code,p);
+        decoded(i,:) = vitdec(recieved,t,35,<span class="string">'trunc'</span>,<span class="string">'hard'</span>,punGeneral(j,:));
+        <span class="keyword">if</span>(decoded(i,:)==pkts(i,:))
+            <span class="comment">%number of sent bits</span>
+           sentBits=sentBits+length(code);
+            j=10;
+        <span class="keyword">else</span>
+            j=j+1;
+        <span class="keyword">end</span>
+   <span class="keyword">end</span>
+    <span class="keyword">if</span>(j==6)
+        <span class="comment">%number of sent bits</span>
+       sentBits=sentBits+length(code);
+       <span class="comment">%error bits</span>
+       locs = pkts(i,:)~=decoded(i,:);
+       errornumber = errornumber+sum(locs);
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+<span class="comment">% Reshaping decoded data into red, green, blue and writing video</span>
+<span class="comment">% we know the limits of the red green and blue by the dimensions</span>
+<span class="comment">%144*176*8=202752</span>
+<span class="comment">%increment once again to get green then blue</span>
+<span class="comment">%we know now that the total number of bits is 608256</span>
+
+totalBitsRecived=reshape(decoded,1,[]);
+redBitsRecived=totalBitsRecived(1,1:202752);
+greenBitsRecived=totalBitsRecived(1,202753:405504);
+blueBitsRecived=totalBitsRecived(1,405505:608256);
+
+redBitsRecived=reshape(redBitsRecived,25344,8);
+redBitsRecived=bi2de(redBitsRecived);
+redBitsRecived=uint8(redBitsRecived);
+redBitsRecived=reshape(redBitsRecived,144,176);
+
+greenBitsRecived=reshape(greenBitsRecived,25344,8);
+greenBitsRecived=bi2de(greenBitsRecived);
+greenBitsRecived=uint8(greenBitsRecived);
+greenBitsRecived=reshape(greenBitsRecived,144,176);
+
+blueBitsRecived=reshape(blueBitsRecived,25344,8);
+blueBitsRecived=bi2de(blueBitsRecived);
+blueBitsRecived=uint8(blueBitsRecived);
+blueBitsRecived=reshape(blueBitsRecived,144,176);
+
+mov(1,Frame).cdata(:,:,1) = redBitsRecived;
+mov(1,Frame).cdata(:,:,2) = greenBitsRecived;
+mov(1,Frame).cdata(:,:,3) = blueBitsRecived;
+    <span class="keyword">end</span>
+  errorBitswithinc(idx)=errornumber;
+  throughput(idx)=(608256*30)/sentBits;
+<span class="keyword">end</span>
+
+errorBitswithinc = errorBitswithinc./(608256*30);
+figure(1)
+plot(probvector,errorBitswithinc)
+title(<span class="string">'Bit error Rate Using Incremental redundancy'</span>)
+figure(2)
+plot(probvector,throughput)
+title(<span class="string">'throughput Using Incremental redundancy'</span>)
+
+writer = VideoWriter(<span class="string">'Videos.avi'</span>,<span class="string">'Uncompressed AVI'</span>);
+writer.FrameRate=obj.FrameRate;
+open(writer);
+writeVideo(writer,mov);
+close(writer);
+</pre><img vspace="5" hspace="5" src="ChannelCodingFile_01.png" alt=""> <img vspace="5" hspace="5" src="ChannelCodingFile_02.png" alt=""> <p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2016a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+clc
+clear all
+% Read Highway Video
+obj = VideoReader('highway.avi');
+a= read(obj);
+frames=get(obj,'NumberOfFrames');
+
+% extracting Frames
+for i=1:frames
+     I(i).cdata=a(:,:,:,i);
+end
+
+s=size(I(1).cdata);
+mov(1:frames) =struct('cdata', zeros(s(1),s(2), 3, 'uint8'),'colormap', []);
+% Trellis Generate rate half
+t = poly2trellis(7,[171 133]);
+
+% Probability vector with 6 elements
+probvector=[0.0001:0.03998:0.2];
+errorBitswithinc=zeros(1,length(probvector));
+throughput=zeros(1,length(probvector));
+
+% puncturing matrix
+punGeneral=[1 1 1 0 1 0 1 0 0 1 1 0 1 0 1 0;1 1 1 0 1 0 1 0 1 1 1 0 1 0 1 0;
+    1 1 1 0 1 1 1 0 1 1 1 0 1 1 1 0;1 1 1 1 1 1 1 0 1 1 1 1 1 1 1 0;1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1];
+
+for idx = 1:length(probvector)
+    
+       errornumber=0;
+       sentBits=0;
+       
+for Frame=1:frames
+%Red Components of the Frame
+R=I(Frame).cdata(:,:,1); 
+%Green Components of the Frame
+G=I(Frame).cdata(:,:,2); 
+%Blue Components of the Frame
+B=I(Frame).cdata(:,:,3);
+
+% Reshaping Red Bits
+[sz1,sz2]=size(R);
+redBits=reshape(R,1,sz1*sz2);
+% Reshaping Green Bits
+[sz1,sz2]=size(G);
+greenBits=reshape(G,1,sz1*sz2);
+% Reshaping Blue Bits
+[sz1,sz2]=size(B);
+blueBits=reshape(B,1,sz1*sz2);
+
+redBits=double(redBits);
+redBits=de2bi(redBits);
+redBits=reshape(redBits,1,[]);
+
+greenBits=double(greenBits);
+greenBits=de2bi(greenBits);
+greenBits=reshape(greenBits,1,[]);
+
+blueBits=double(blueBits);
+blueBits=de2bi(blueBits);
+blueBits=reshape(blueBits,1,[]);
+
+% Concatinating bit final stream
+totalBits=horzcat(redBits,greenBits,blueBits);
+
+length(totalBits);
+length(totalBits)/1024;
+%we knownow that the total number of pkts is 594 , use this number again
+
+% Packets to be encoded 
+pkts=reshape(totalBits,594,1024);
+% matrix to recieve decoded data
+decoded=zeros(594,1024);
+
+
+% 2 loops to apply puncturing if the recieved packet is not equal to the
+% data before encoding we increment the puncturing rate
+for i=1:594
+    j=1;
+   while j<=5
+        code = convenc(pkts(i,:),t,punGeneral(j,:));
+        p = probvector(idx);
+        recieved = bsc(code,p);
+        decoded(i,:) = vitdec(recieved,t,35,'trunc','hard',punGeneral(j,:));
+        if(decoded(i,:)==pkts(i,:))
+            %number of sent bits
+           sentBits=sentBits+length(code);
+            j=10;
+        else
+            j=j+1;
+        end
+   end
+    if(j==6)
+        %number of sent bits
+       sentBits=sentBits+length(code);
+       %error bits 
+       locs = pkts(i,:)~=decoded(i,:);
+       errornumber = errornumber+sum(locs);
+    end
+end
+% Reshaping decoded data into red, green, blue and writing video
+% we know the limits of the red green and blue by the dimensions 
+%144*176*8=202752
+%increment once again to get green then blue
+%we know now that the total number of bits is 608256
+
+totalBitsRecived=reshape(decoded,1,[]);
+redBitsRecived=totalBitsRecived(1,1:202752);
+greenBitsRecived=totalBitsRecived(1,202753:405504);
+blueBitsRecived=totalBitsRecived(1,405505:608256);
+
+redBitsRecived=reshape(redBitsRecived,25344,8);
+redBitsRecived=bi2de(redBitsRecived);
+redBitsRecived=uint8(redBitsRecived);
+redBitsRecived=reshape(redBitsRecived,144,176);
+
+greenBitsRecived=reshape(greenBitsRecived,25344,8);
+greenBitsRecived=bi2de(greenBitsRecived);
+greenBitsRecived=uint8(greenBitsRecived);
+greenBitsRecived=reshape(greenBitsRecived,144,176);
+
+blueBitsRecived=reshape(blueBitsRecived,25344,8);
+blueBitsRecived=bi2de(blueBitsRecived);
+blueBitsRecived=uint8(blueBitsRecived);
+blueBitsRecived=reshape(blueBitsRecived,144,176);
+
+mov(1,Frame).cdata(:,:,1) = redBitsRecived; 
+mov(1,Frame).cdata(:,:,2) = greenBitsRecived;
+mov(1,Frame).cdata(:,:,3) = blueBitsRecived;
+    end
+  errorBitswithinc(idx)=errornumber;
+  throughput(idx)=(608256*30)/sentBits;
+end
+
+errorBitswithinc = errorBitswithinc./(608256*30);
+figure(1)
+plot(probvector,errorBitswithinc)
+title('Bit error Rate Using Incremental redundancy')
+figure(2)
+plot(probvector,throughput)
+title('throughput Using Incremental redundancy')
+
+writer = VideoWriter('Videos.avi','Uncompressed AVI');
+writer.FrameRate=obj.FrameRate;
+open(writer);
+writeVideo(writer,mov);
+close(writer);
+##### SOURCE END #####
+--></body></html>
